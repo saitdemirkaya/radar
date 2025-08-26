@@ -69,26 +69,15 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                     FixtureResponse matchStatistic = sportMonksService.getMatchStatistic(datum.getId());
                     result.append(parseAndPrint(matchStatistic, datum.getId()));
                 }
-            /*StringBuilder sb = new StringBuilder("📊 Canlı Maçlar:\n\n");
-            response.getData().forEach(match ->
-                    sb.append("⚽ ").append(match.getName())
-                            .append(" ⏰ ").append(match.getStartingAt())
-                            .append("\n")
-            );*/
-            /*if (result.isEmpty()) {
-                sendMessage.setText("Veri bulunamadı!");
-            } else {
-                sendMessage.setText(result);
-            }*/
-
-                if (result.length() > 0) {
+                if (!result.isEmpty()) {
                     sendMessage.setText(result.toString());
-                    System.out.println("Sonuç mesajı: " + result);
-                } else {
-                    sendMessage.setText("Selam Görkem. Beni özledin mi?");
+                    try {
+                        execute(sendMessage);
+                    } catch (TelegramApiException e) {
+                        e.printStackTrace();
+                    }
                 }
-                execute(sendMessage);
-            } catch (TelegramApiException e) {
+            } catch (Exception e) {
                 System.out.println(e);
                 try {
                     sendMessage = new SendMessage();
@@ -99,7 +88,8 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 } catch (InterruptedException interruptedException) {
                     interruptedException.printStackTrace();
                 } catch (TelegramApiException ex) {
-                    System.out.println("Hata mesajı atarken de hata alındı!");;
+                    System.out.println("Hata mesajı atarken de hata alındı!");
+                    ;
                 }
             }
             try {
@@ -125,6 +115,20 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         String awayTeamName = teams[1].trim();
         // Get the statistics from the response
         System.out.println("\n \nMatch: " + fixtureResponse.getData().getName());
+        int matchMinute = sportMonksService.getMatchMinute(fixtureId);
+        System.out.println("\nMatch Minute: " + matchMinute);
+        if (matchMinute < 15 || matchMinute > 75) {
+            return "";
+        }
+        String matchScore = sportMonksService.getMatchScore(fixtureId);
+        System.out.println("\nMatch Score: " + matchScore);
+        String[] split = matchScore.split("-");
+        String homeScore = split[0].trim();
+        String awayScore = split[1].trim();
+        if(!homeScore.equals("0") && !awayScore.equals("0")){
+            return "";
+        }
+
         List<FixtureResponse.DataObject.Statistic> statistics = fixtureResponse.getData().getStatistics();
 
         if (statistics == null || statistics.isEmpty()) {
@@ -141,12 +145,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         System.out.println("\nAway Statistics:");
         Map<String, Integer> awayValues = extractValuesByLocation(statistics, "away", targetCodes);
         awayValues.forEach((code, value) -> System.out.println("Code: " + code + ", Value: " + value));
-        int matchMinute = sportMonksService.getMatchMinute(fixtureId);
-        System.out.println("\nMatch Minute: " + matchMinute);
-        String matchScore = sportMonksService.getMatchScore(fixtureId);
-        System.out.println("\nMatch Score: " + matchScore);
         return calculate(homeValues, awayValues, matchMinute, matchScore, homeTeamName, awayTeamName);
-
     }
 
     private String calculate(Map<String, Integer> homeValues, Map<String, Integer> awayValues, int min, String matchScore, String homeTeamName, String awayTeamName) {
@@ -354,10 +353,16 @@ public class MyTelegramBot extends TelegramLongPollingBot {
     }
 
     private static Map<String, Integer> extractValuesByLocation(List<FixtureResponse.DataObject.Statistic> statistics, String location, List<String> targetCodes) {
-        return statistics.stream()
+// Initialize the map with all target codes set to 0
+        Map<String, Integer> result = targetCodes.stream()
+                .collect(Collectors.toMap(code -> code, code -> 0));
+
+        // Update the map with actual values from the statistics
+        statistics.stream()
                 .filter(stat -> location.equals(stat.getLocation()) && targetCodes.contains(stat.getType().getCode()))
-                .collect(Collectors.toMap(stat -> stat.getType().getCode(), stat -> stat.getData().getValue()));
-    }
+                .forEach(stat -> result.put(stat.getType().getCode(), stat.getData().getValue()));
+
+        return result;    }
 
     private double getIsabetOrani(int homeTeamİsabetli, int homeTotalShot) {
         return homeTeamİsabetli == 0 ?

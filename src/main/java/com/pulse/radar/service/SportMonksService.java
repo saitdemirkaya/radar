@@ -108,6 +108,8 @@ public class SportMonksService {
                     String description = period.path("description").asText();
                     if ("2nd-half".equalsIgnoreCase(description)) {
                         return period.path("minutes").asInt();
+                    } else if ("1st-half".equalsIgnoreCase(description)) {
+                        return period.path("minutes").asInt();
                     }
                 }
             }
