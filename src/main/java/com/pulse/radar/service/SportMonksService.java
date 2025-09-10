@@ -104,13 +104,22 @@ public class SportMonksService {
             }
 
             if (periodsNode.isArray()) {
+                Integer secondHalfMinutes = null;
+                Integer firstHalfMinutes = null;
                 for (JsonNode period : periodsNode) {
                     String description = period.path("description").asText();
                     if ("2nd-half".equalsIgnoreCase(description)) {
-                        return period.path("minutes").asInt();
+                        secondHalfMinutes = period.path("minutes").asInt();
                     } else if ("1st-half".equalsIgnoreCase(description)) {
-                        return period.path("minutes").asInt();
+                        firstHalfMinutes = period.path("minutes").asInt();
                     }
+                }
+                if (secondHalfMinutes != null) {
+                    return secondHalfMinutes;
+                }
+                // Yoksa 1. yarı dakikasını döner
+                if (firstHalfMinutes != null) {
+                    return firstHalfMinutes;
                 }
             }
 

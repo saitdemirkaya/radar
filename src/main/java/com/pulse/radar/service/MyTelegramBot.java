@@ -58,6 +58,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
     public void onUpdatesReceived(List<Update> updates) {
 
         while (true) {
+            boolean waitHour = false;
             SendMessage sendMessage;
             StringBuilder result = new StringBuilder();
             try {
@@ -65,10 +66,15 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 sendMessage.setChatId("-636719291");
                 LiveScoresResponse response = sportMonksService.getLiveMatches();
 
-                for (LiveScoresResponse.MatchData datum : response.getData()) {
-                    FixtureResponse matchStatistic = sportMonksService.getMatchStatistic(datum.getId());
-                    result.append(parseAndPrint(matchStatistic, datum.getId()));
+                if (response.getData() != null) {
+                    for (LiveScoresResponse.MatchData datum : response.getData()) {
+                        FixtureResponse matchStatistic = sportMonksService.getMatchStatistic(datum.getId());
+                        result.append(parseAndPrint(matchStatistic, datum.getId()));
+                    }
+                } else{
+                    waitHour = true;
                 }
+
                 if (!result.isEmpty()) {
                     sendMessage.setText(result.toString());
                     try {
@@ -82,24 +88,25 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 try {
                     sendMessage = new SendMessage();
                     sendMessage.setChatId("-636719291");
-                    sendMessage.setText("Radar hata aldı manuel kontrole geçin!");
+                    sendMessage.setText("Radar hata aldı manuel kontrole geçin!" + e.getMessage());
                     execute(sendMessage);
                     Thread.sleep(200000);
                 } catch (InterruptedException interruptedException) {
                     interruptedException.printStackTrace();
                 } catch (TelegramApiException ex) {
-                    System.out.println("Hata mesajı atarken de hata alındı!");
+                    System.out.println("Hata mesajı atarken de hata alındı aq!");
                     ;
                 }
             }
             try {
-                long ONE_MINUTE = 60000; // 1 minute in milliseconds
+                int wait = waitHour ? 3600000 : 600000; // 1 saat = 3600000 ms, 1 dakika = 60000 ms
                 Calendar calendar = Calendar.getInstance(); // gets a calendar using the default time zone and locale.
                 System.out.println("Şu anki Tarama dk'sı: " + calendar.getTime());
-                calendar.add(Calendar.SECOND, 60); // Add 1 minute
+                calendar.add(Calendar.MILLISECOND, wait); // Add wait time in milliseconds
                 System.out.println("Sıradaki Tarama dk'sı: " + calendar.getTime());
                 System.out.println("----------------------------------------------------------------");
-                Thread.sleep(ONE_MINUTE);
+                Thread.sleep(wait);
+                waitHour = false;
             } catch (InterruptedException e) {
                 System.exit(0);
             }
@@ -125,7 +132,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         String[] split = matchScore.split("-");
         String homeScore = split[0].trim();
         String awayScore = split[1].trim();
-        if(!homeScore.equals("0") && !awayScore.equals("0")){
+        if (!homeScore.equals("0") && !awayScore.equals("0")) {
             return "";
         }
 
@@ -362,7 +369,8 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 .filter(stat -> location.equals(stat.getLocation()) && targetCodes.contains(stat.getType().getCode()))
                 .forEach(stat -> result.put(stat.getType().getCode(), stat.getData().getValue()));
 
-        return result;    }
+        return result;
+    }
 
     private double getIsabetOrani(int homeTeamİsabetli, int homeTotalShot) {
         return homeTeamİsabetli == 0 ?
