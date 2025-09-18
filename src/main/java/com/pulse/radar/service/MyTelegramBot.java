@@ -99,7 +99,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 }
             }
             try {
-                int wait = waitHour ? 3600000 : 600000; // 1 saat = 3600000 ms, 1 dakika = 60000 ms
+                int wait = waitHour ? 360000 : 60000; // 1 saat = 3600000 ms, 1 dakika = 60000 ms
                 Calendar calendar = Calendar.getInstance(); // gets a calendar using the default time zone and locale.
                 System.out.println("Şu anki Tarama dk'sı: " + calendar.getTime());
                 calendar.add(Calendar.MILLISECOND, wait); // Add wait time in milliseconds
