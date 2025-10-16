@@ -68,12 +68,17 @@ public class MyTelegramBot extends TelegramLongPollingBot {
             try {
                 sendMessage = new SendMessage();
                 sendMessage.setChatId("-636719291");
+                Map<String, Double> teamsAverageGoals = sportMonksService.getTeamsStats();
                 LiveScoresResponse response = sportMonksService.getLiveMatches();
 
                 if (response.getData() != null) {
                     for (LiveScoresResponse.MatchData datum : response.getData()) {
+                        //453->Polonya, 486->Rusya, 570->İspanya Copa Del Rey, 390->İtalya Kupa, 244->Hırvatistan, 27->Caraboa Cup, 609-> Ukrayna
+                        if (datum.getLeagueId() == 453 || datum.getLeagueId() == 486 || datum.getLeagueId() == 570 || datum.getLeagueId() == 390 || datum.getLeagueId() == 244 || datum.getLeagueId() == 27 || datum.getLeagueId() == 609) {
+                            continue;
+                        }
                         FixtureResponse matchStatistic = sportMonksService.getMatchStatistic(datum.getId());
-                        result.append(parseAndPrint(matchStatistic, datum.getId()));
+                        result.append(parseAndPrint(matchStatistic, datum.getId(), datum.getLeagueId(), teamsAverageGoals));
                     }
                 } else {
                     waitHour = true;
@@ -87,7 +92,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                         e.printStackTrace();
                     }
                 }
-             } catch (Exception e) {
+            } catch (Exception e) {
                 System.out.println(e);
                 try {
                     sendMessage = new SendMessage();
@@ -117,9 +122,9 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private String parseAndPrint(FixtureResponse fixtureResponse, long fixtureId) {
+    private String parseAndPrint(FixtureResponse fixtureResponse, long fixtureId, long leagueId, Map<String, Double> teamsAverageGoals) {
 
-        List<String> targetCodes = Arrays.asList(BALL_POSSESSION, SHOTS_TOTAL, SHOTS_ON_TARGET, SHOTS_OFF_TARGET, SHOTS_BLOCKED, HIT_WOODWORK, BIG_CHANCES_MISSED,GOALS);
+        List<String> targetCodes = Arrays.asList(BALL_POSSESSION, SHOTS_TOTAL, SHOTS_ON_TARGET, SHOTS_OFF_TARGET, SHOTS_BLOCKED, HIT_WOODWORK, BIG_CHANCES_MISSED, GOALS);
 
         String name = fixtureResponse.getData().getName();
         if (name == null || !name.contains(" vs ")) {
@@ -161,10 +166,10 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         Map<String, Integer> awayValues = extractValuesByLocation(statistics, "away", targetCodes);
         awayValues.forEach((code, value) -> System.out.println("Code: " + code + ", Value: " + value));
 
-        return calculate(homeValues, awayValues, matchMinute, homeTeamName, awayTeamName);
+        return calculate(homeValues, awayValues, matchMinute, homeTeamName, awayTeamName, leagueId, teamsAverageGoals);
     }
 
-    private String calculate(Map<String, Integer> homeValues, Map<String, Integer> awayValues, int min, String homeTeamName, String awayTeamName) {
+    private String calculate(Map<String, Integer> homeValues, Map<String, Integer> awayValues, int min, String homeTeamName, String awayTeamName, long leagueId, Map<String, Double> teamsAverageGoals) {
 
         StringBuilder result = new StringBuilder("");
 
@@ -187,45 +192,21 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         Integer homeTotalShot = homeValues.get(SHOTS_TOTAL) + homeKacan;
         Integer homeToplaOynama = homeValues.get(BALL_POSSESSION);
         int homeToplaOynamaVeSut = homeToplaOynama * homeTotalShot;
-        Integer homeTeamİsabetli = homeValues.get(SHOTS_ON_TARGET) + homeDirek + homeKacan;
-        double homeIsabetOrani = getIsabetOrani(homeTeamİsabetli, homeTotalShot);
+        Integer homeTeamIsabetli = homeValues.get(SHOTS_ON_TARGET) + homeDirek + homeKacan;
+        double homeIsabetOrani = getIsabetOrani(homeTeamIsabetli, homeTotalShot);
         double homeVerim = (double) homeToplaOynamaVeSut / min;
 
         Integer awayTotalShot = awayValues.get(SHOTS_TOTAL) + awayKacan;
         Integer awayToplaOynama = awayValues.get(BALL_POSSESSION);
         int awayToplaOynamaVeSut = awayToplaOynama * awayTotalShot;
-        Integer awayTeamİsabetli = awayValues.get(SHOTS_ON_TARGET)+ awayDirek + awayKacan;
-        double awayIsabetOrani = getIsabetOrani(awayTeamİsabetli, awayTotalShot);
+        Integer awayTeamIsabetli = awayValues.get(SHOTS_ON_TARGET) + awayDirek + awayKacan;
+        double awayIsabetOrani = getIsabetOrani(awayTeamIsabetli, awayTotalShot);
         double awayVerim = (double) awayToplaOynamaVeSut / min;
 
 
         if (min >= 15 && min <= 20) {
             if ((homeTotalShot >= 5 &&
-                    homeIsabetOrani <= 2 &&
-                    homeVerim >= 16) &&
-                    !teamName.contains(homeTeamName) &&
-                    homeScore.equals("0")) {
-
-                teamName.add(homeTeamName);
-                result.append("Dakika : ").append(min).append(" ");
-                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
-                result.append(homeTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
-                System.out.println(result);
-            }
-            if (((awayTotalShot) >= 5 &&
-                    awayIsabetOrani <= 2 &&
-                    awayVerim >= 16) &&
-                    !teamName.contains(awayTeamName) &&
-                    awayScore.equals("0")) {
-                teamName.add(awayTeamName);
-                result.append("Dakika : ").append(min).append(" ");
-                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
-                result.append(awayTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
-                System.out.println(result);
-            }
-        } else if (min >= 21 && min <= 25) {
-            if (((homeTotalShot) >= 5 &&
-                    homeIsabetOrani <= 2 &&
+                    homeTeamIsabetli >= 2 &&
                     homeVerim >= 14) &&
                     !teamName.contains(homeTeamName) &&
                     homeScore.equals("0")) {
@@ -234,10 +215,14 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(homeTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                Double homeMbg = teamsAverageGoals.get(homeTeamName);
+                if (homeMbg != null && homeMbg > 1.5) {
+                    result.append(homeTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", homeMbg)).append("\n\n");
+                }
                 System.out.println(result);
             }
             if (((awayTotalShot) >= 5 &&
-                    awayIsabetOrani <= 2 &&
+                    awayTeamIsabetli >= 2 &&
                     awayVerim >= 14) &&
                     !teamName.contains(awayTeamName) &&
                     awayScore.equals("0")) {
@@ -245,11 +230,47 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(awayTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                Double awayMbg = teamsAverageGoals.get(awayTeamName);
+                if (awayMbg != null && awayMbg > 1.5) {
+                    result.append(awayTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", awayMbg)).append("\n\n");
+                }
+                System.out.println(result);
+            }
+        } else if (min >= 21 && min <= 25) {
+            if (((homeTotalShot) >= 6 &&
+                    homeTeamIsabetli >= 2 &&
+                    homeVerim >= 14) &&
+                    !teamName.contains(homeTeamName) &&
+                    homeScore.equals("0")) {
+
+                teamName.add(homeTeamName);
+                result.append("Dakika : ").append(min).append(" ");
+                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
+                result.append(homeTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                Double homeMbg = teamsAverageGoals.get(homeTeamName);
+                if (homeMbg != null && homeMbg > 1.5) {
+                    result.append(homeTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", homeMbg)).append("\n\n");
+                }
+                System.out.println(result);
+            }
+            if (((awayTotalShot) >= 6 &&
+                    awayTeamIsabetli >= 2 &&
+                    awayVerim >= 14) &&
+                    !teamName.contains(awayTeamName) &&
+                    awayScore.equals("0")) {
+                teamName.add(awayTeamName);
+                result.append("Dakika : ").append(min).append(" ");
+                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
+                result.append(awayTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                Double awayMbg = teamsAverageGoals.get(awayTeamName);
+                if (awayMbg != null && awayMbg > 1.5) {
+                    result.append(awayTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", awayMbg)).append("\n\n");
+                }
                 System.out.println(result);
             }
         } else if (min >= 26 && min <= 30) {
-            if (((homeTotalShot) >= 5 &&
-                    homeIsabetOrani <= 2 &&
+            if (((homeTotalShot) >= 6 &&
+                    homeTeamIsabetli >= 2 &&
                     homeVerim >= 12) &&
                     !teamName.contains(homeTeamName) &&
                     homeScore.equals("0")) {
@@ -258,10 +279,14 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(homeTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                Double homeMbg = teamsAverageGoals.get(homeTeamName);
+                if (homeMbg != null && homeMbg > 1.5) {
+                    result.append(homeTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", homeMbg)).append("\n\n");
+                }
                 System.out.println(result);
             }
-            if (((awayTotalShot) >= 5 &&
-                    awayIsabetOrani <= 2 &&
+            if (((awayTotalShot) >= 6 &&
+                    awayTeamIsabetli >= 2 &&
                     awayVerim >= 12) &&
                     !teamName.contains(awayTeamName) &&
                     awayScore.equals("0")) {
@@ -269,37 +294,16 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(awayTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                Double awayMbg = teamsAverageGoals.get(awayTeamName);
+                if (awayMbg != null && awayMbg > 1.5) {
+                    result.append(awayTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", awayMbg)).append("\n\n");
+                }
                 System.out.println(result);
             }
         } else if (min >= 31 && min <= 45) {
-            if (((homeTotalShot) >= 6 &&
-                    homeIsabetOrani <= 2 &&
-                    homeVerim >= 8) &&
-                    !teamName.contains(homeTeamName) &&
-                    homeScore.equals("0")) {
-
-                teamName.add(homeTeamName);
-                result.append("Dakika : ").append(min).append(" ");
-                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
-                result.append(homeTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
-                System.out.println(result);
-            }
-            if (((awayTotalShot) >= 6 &&
-                    awayIsabetOrani <= 2 &&
-                    awayVerim >= 8) &&
-                    !teamName.contains(awayTeamName) &&
-                    awayScore.equals("0")) {
-                teamName.add(awayTeamName);
-                result.append("Dakika : ").append(min).append(" ");
-                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
-                result.append(awayTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
-                System.out.println(result);
-            }
-        }
-        if (min >= 46 && min <= 60) {
             if (((homeTotalShot) >= 7 &&
-                    homeIsabetOrani <= 3 &&
-                    homeVerim >= 6) &&
+                    homeTeamIsabetli >= 3 &&
+                    homeVerim >= 8.5) &&
                     !teamName.contains(homeTeamName) &&
                     homeScore.equals("0")) {
 
@@ -310,8 +314,8 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 System.out.println(result);
             }
             if (((awayTotalShot) >= 7 &&
-                    awayIsabetOrani <= 3 &&
-                    awayVerim >= 6) &&
+                    awayTeamIsabetli >= 3 &&
+                    awayVerim >= 8.5) &&
                     !teamName.contains(awayTeamName) &&
                     awayScore.equals("0")) {
                 teamName.add(awayTeamName);
@@ -321,10 +325,10 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 System.out.println(result);
             }
         }
-        if (min >= 61 && min <= 75) {
+        if (min >= 46 && min <= 55) {
             if (((homeTotalShot) >= 8 &&
-                    homeIsabetOrani <= 3 &&
-                    homeVerim >= 5) &&
+                    homeTeamIsabetli >= 3 &&
+                    homeVerim >= 8.5) &&
                     !teamName.contains(homeTeamName) &&
                     homeScore.equals("0")) {
 
@@ -335,8 +339,58 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 System.out.println(result);
             }
             if (((awayTotalShot) >= 8 &&
-                    awayIsabetOrani <= 3 &&
-                    awayVerim >= 5) &&
+                    awayTeamIsabetli >= 3 &&
+                    awayVerim >= 8.5) &&
+                    !teamName.contains(awayTeamName) &&
+                    awayScore.equals("0")) {
+                teamName.add(awayTeamName);
+                result.append("Dakika : ").append(min).append(" ");
+                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
+                result.append(awayTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                System.out.println(result);
+            }
+        }
+        if (min >= 56 && min <= 65) {
+            if (((homeTotalShot) >= 10 &&
+                    homeTeamIsabetli >= 4 &&
+                    homeVerim >= 9.5) &&
+                    !teamName.contains(homeTeamName) &&
+                    homeScore.equals("0")) {
+
+                teamName.add(homeTeamName);
+                result.append("Dakika : ").append(min).append(" ");
+                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
+                result.append(homeTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                System.out.println(result);
+            }
+            if (((awayTotalShot) >= 10 &&
+                    awayTeamIsabetli >= 4 &&
+                    awayVerim >= 9.5) &&
+                    !teamName.contains(awayTeamName) &&
+                    awayScore.equals("0")) {
+                teamName.add(awayTeamName);
+                result.append("Dakika : ").append(min).append(" ");
+                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
+                result.append(awayTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                System.out.println(result);
+            }
+        }
+        if (min >= 66 && min <= 75) {
+            if (((homeTotalShot) >= 12 &&
+                    homeTeamIsabetli >= 3 &&
+                    homeVerim >= 9.5) &&
+                    !teamName.contains(homeTeamName) &&
+                    homeScore.equals("0")) {
+
+                teamName.add(homeTeamName);
+                result.append("Dakika : ").append(min).append(" ");
+                result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
+                result.append(homeTeamName).append(" takımının bir golü (0.5 üst) yüksek güvenden alınabilir bol şans!\n\n");
+                System.out.println(result);
+            }
+            if (((awayTotalShot) >= 12 &&
+                    awayTeamIsabetli >= 3 &&
+                    awayVerim >= 9.5) &&
                     !teamName.contains(awayTeamName) &&
                     awayScore.equals("0")) {
                 teamName.add(awayTeamName);
@@ -422,7 +476,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                     }
                 } else {
 
-                    if (homeTotalShot>= min / 4  &&
+                    if (homeTotalShot >= min / 4 &&
                             !ivsTeamName.contains(homeTeamName) &&
                             homeScore.equals("0")) {
                         ivsTeamName.add(homeTeamName);
