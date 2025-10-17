@@ -2,6 +2,7 @@ package com.pulse.radar.service;
 
 import com.pulse.radar.model.FixtureResponse;
 import com.pulse.radar.model.LiveScoresResponse;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -36,6 +37,14 @@ public class MyTelegramBot extends TelegramLongPollingBot {
         this.sportMonksService = sportMonksService;
     }
 
+    @Scheduled(cron = "0 0 0 * * ?")
+    public void clearLists() {
+        teamName.clear();
+        ivsTeamName.clear();
+        yuksekVerimTeams.clear();
+        System.out.println("Listeler temizlendi!");
+    }
+
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
@@ -60,7 +69,10 @@ public class MyTelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdatesReceived(List<Update> updates) {
-
+        Map<String, Double> teamsAverageGoals = new HashMap<>();
+        System.out.println("=======================================");
+        System.out.println("            RADAR STARTED!             ");
+        System.out.println("=======================================");
         while (true) {
             boolean waitHour = false;
             SendMessage sendMessage;
@@ -68,7 +80,9 @@ public class MyTelegramBot extends TelegramLongPollingBot {
             try {
                 sendMessage = new SendMessage();
                 sendMessage.setChatId("-636719291");
-                Map<String, Double> teamsAverageGoals = sportMonksService.getTeamsStats();
+                if (teamsAverageGoals.isEmpty()) {
+                    teamsAverageGoals = sportMonksService.getTeamsStats();
+                }
                 LiveScoresResponse response = sportMonksService.getLiveMatches();
 
                 if (response.getData() != null) {
@@ -215,7 +229,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(homeTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama);
+                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama).append("Verim: ").append(homeVerim);
                 Double homeMbg = teamsAverageGoals.get(homeTeamName);
                 if (homeMbg != null && homeMbg > 1.5) {
                     result.append(homeTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", homeMbg)).append("\n\n");
@@ -231,7 +245,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(awayTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama);
+                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama).append("Verim: ").append(awayVerim);
                 Double awayMbg = teamsAverageGoals.get(awayTeamName);
                 if (awayMbg != null && awayMbg > 1.5) {
                     result.append(awayTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", awayMbg)).append("\n\n");
@@ -249,7 +263,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(homeTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama);
+                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama).append("Verim: ").append(homeVerim);
                 Double homeMbg = teamsAverageGoals.get(homeTeamName);
                 if (homeMbg != null && homeMbg > 1.5) {
                     result.append(homeTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", homeMbg)).append("\n\n");
@@ -265,7 +279,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(awayTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama);
+                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama).append("Verim: ").append(awayVerim);
                 Double awayMbg = teamsAverageGoals.get(awayTeamName);
                 if (awayMbg != null && awayMbg > 1.5) {
                     result.append(awayTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", awayMbg)).append("\n\n");
@@ -283,7 +297,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(homeTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama);
+                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama).append("Verim: ").append(homeVerim);
                 Double homeMbg = teamsAverageGoals.get(homeTeamName);
                 if (homeMbg != null && homeMbg > 1.5) {
                     result.append(homeTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", homeMbg)).append("\n\n");
@@ -299,7 +313,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(awayTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama);
+                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama).append("Verim: ").append(awayVerim);
                 Double awayMbg = teamsAverageGoals.get(awayTeamName);
                 if (awayMbg != null && awayMbg > 1.5) {
                     result.append(awayTeamName).append(" takımının ilk yarı golü de alınabilir. Mbg: ").append(String.format("%.2f", awayMbg)).append("\n\n");
@@ -317,7 +331,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(homeTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama);
+                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama).append("Verim: ").append(homeVerim);
                 System.out.println(result);
             }
             if (((awayTotalShot) >= 7 &&
@@ -329,7 +343,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(awayTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama);
+                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama).append("Verim: ").append(awayVerim);
                 System.out.println(result);
             }
         }
@@ -344,7 +358,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(homeTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama);
+                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama).append("Verim: ").append(homeVerim);
                 System.out.println(result);
             }
             if (((awayTotalShot) >= 8 &&
@@ -356,7 +370,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(awayTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama);
+                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama).append("Verim: ").append(awayVerim);
                 System.out.println(result);
             }
         }
@@ -371,7 +385,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(homeTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama);
+                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama).append("Verim: ").append(homeVerim);
                 System.out.println(result);
             }
             if (((awayTotalShot) >= 10 &&
@@ -383,7 +397,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(awayTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama);
+                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama).append("Verim: ").append(awayVerim);
                 System.out.println(result);
             }
         }
@@ -398,7 +412,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(homeTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama);
+                result.append("T.Ş: ").append(homeTotalShot).append("İ.Ş: ").append(homeTeamIsabetli).append("T.O: ").append(homeToplaOynama).append("Verim: ").append(homeVerim);
                 System.out.println(result);
             }
             if (((awayTotalShot) >= 12 &&
@@ -410,7 +424,7 @@ public class MyTelegramBot extends TelegramLongPollingBot {
                 result.append("Dakika : ").append(min).append(" ");
                 result.append(homeTeamName).append("-").append(awayTeamName).append(" maçında ");
                 result.append(awayTeamName).append(" 0.5 üst \n");
-                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama);
+                result.append("T.Ş: ").append(awayTotalShot).append("İ.Ş: ").append(awayTeamIsabetli).append("T.O: ").append(awayToplaOynama).append("Verim: ").append(awayVerim);
                 System.out.println(result);
             }
         }

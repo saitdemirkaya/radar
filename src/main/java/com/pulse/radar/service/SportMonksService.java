@@ -84,7 +84,7 @@ public class SportMonksService {
                     }
                 }
             } catch (Exception e) {
-                throw new RuntimeException("Failed to fetch team statistics", e);
+                System.out.println("Error fetching statistics for team ID " + teamId + ": " + e.getMessage());
             }
         }
 
